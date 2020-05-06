@@ -1,0 +1,17 @@
+# 构建产物
+[Bb]in/
+[Oo]bj/
+*.exe
+*.dll
+*.pdb
+
+# VS / MSBuild 缓存
+.vs/
+*.user
+*.suo
+*.cache
+
+# 临时文件
+*.log
+Thumbs.db
+Desktop.ini

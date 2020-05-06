@@ -1,0 +1,178 @@
+﻿<Window x:Class="ADConsole.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AD 域控管理控制台"
+        Height="760" Width="1280"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
+
+    <DockPanel>
+
+        <!-- 菜单栏 -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="导出当前列表 CSV(_E)..." Click="Menu_ExportCsv"/>
+                <Separator/>
+                <MenuItem Header="退出(_X)" Click="Menu_Exit"/>
+            </MenuItem>
+            <MenuItem Header="用户(_U)">
+                <MenuItem x:Name="MenuNewUser" Header="新建用户(_N)..." Click="Menu_NewUser"
+                          IsEnabled="{Binding CanWrite}"/>
+                <MenuItem x:Name="MenuResetPwd" Header="重置密码(_P)..." Click="Menu_ResetPassword"
+                          IsEnabled="{Binding CanWrite}"/>
+                <Separator/>
+                <MenuItem x:Name="MenuEnable" Header="启用账号(_E)" Click="Menu_Enable"
+                          IsEnabled="{Binding CanWrite}"/>
+                <MenuItem x:Name="MenuDisable" Header="禁用账号(_D)" Click="Menu_Disable"
+                          IsEnabled="{Binding CanWrite}"/>
+                <MenuItem x:Name="MenuUnlock" Header="解锁账号(_U)" Click="Menu_Unlock"
+                          IsEnabled="{Binding CanWrite}"/>
+                <Separator/>
+                <MenuItem x:Name="MenuDeleteUser" Header="删除(_X)..." Click="Menu_DeleteUser"
+                          IsEnabled="{Binding CanWrite}"/>
+            </MenuItem>
+            <MenuItem Header="组(_G)">
+                <MenuItem Header="新建组(_N)..." Click="Menu_NewGroup" IsEnabled="{Binding CanWrite}"/>
+                <MenuItem Header="添加成员(_A)..." Click="Menu_AddMember" IsEnabled="{Binding CanWrite}"/>
+                <MenuItem Header="移除成员(_R)..." Click="Menu_RemoveMember" IsEnabled="{Binding CanWrite}"/>
+                <MenuItem Header="查看成员(_V)..." Click="Menu_ViewMembers"/>
+            </MenuItem>
+            <MenuItem Header="计算机(_C)">
+                <MenuItem x:Name="MenuCompEnable" Header="启用(_E)" Click="Menu_CompEnable"
+                          IsEnabled="{Binding CanWrite}"/>
+                <MenuItem x:Name="MenuCompDisable" Header="禁用(_D)" Click="Menu_CompDisable"
+                          IsEnabled="{Binding CanWrite}"/>
+                <MenuItem x:Name="MenuCompDelete" Header="删除(_X)..." Click="Menu_CompDelete"
+                          IsEnabled="{Binding CanWrite}"/>
+            </MenuItem>
+            <MenuItem Header="工具(_T)">
+                <MenuItem Header="域信息与密码策略(_D)..." Click="Menu_DomainInfo"/>
+                <Separator/>
+                <MenuItem Header="批量导入用户 CSV(_I)..." Click="Menu_CsvImport"
+                          IsEnabled="{Binding CanWrite}"/>
+                <MenuItem Header="密码到期提醒(_W)..." Click="Menu_PasswordExpiry"/>
+                <MenuItem Header="登录历史查询(_L)..." Click="Menu_LoginHistory"/>
+                <Separator/>
+                <MenuItem Header="重新连接(_R)" Click="Menu_Reconnect"/>
+            </MenuItem>
+            <MenuItem Header="帮助(_H)">
+                <MenuItem Header="关于(_A)..." Click="Menu_About"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- 工具栏 -->
+        <ToolBarTray DockPanel.Dock="Top" Background="#FFF5F5F5">
+            <ToolBar>
+                <Button Content="刷新" Click="Menu_Refresh" ToolTip="刷新当前容器 (F5)"/>
+                <Separator/>
+                <TextBlock Text="搜索：" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                <TextBox x:Name="SearchBox" Width="220" VerticalAlignment="Center"
+                         KeyDown="SearchBox_KeyDown" ToolTip="输入关键字后按回车"/>
+                <Button Content="查询" Click="Menu_Search" Margin="6,0,0,0"/>
+                <Separator/>
+                <CheckBox x:Name="RecursiveBox" Content="递归搜索子容器" IsChecked="True"
+                          VerticalAlignment="Center" Margin="6,0,0,0"/>
+            </ToolBar>
+        </ToolBarTray>
+
+        <!-- 状态栏 -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Text="就绪"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="ConnText" Text=""/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right" Margin="12,0,0,0">
+                <Border x:Name="PermBadge" Background="#FFE7E6E6" Padding="6,2" CornerRadius="3">
+                    <TextBlock x:Name="PermText" Text="权限检测中…"/>
+                </Border>
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- 主体 -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" MinWidth="200"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左：OU 树 -->
+            <GroupBox Grid.Column="0" Header="组织单位" Padding="4">
+                <TreeView x:Name="TreeOu" SelectedItemChanged="TreeOu_Selected" BorderThickness="0"/>
+            </GroupBox>
+
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="#FFD0D0D0"/>
+
+            <!-- 右：列表 + 详情 -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="150"/>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="220" MinHeight="120"/>
+                </Grid.RowDefinitions>
+
+                <DataGrid Grid.Row="0" x:Name="ObjectGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          SelectionUnit="FullRow"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          MouseDoubleClick="ObjectGrid_DoubleClick"
+                          MouseRightButtonUp="ObjectGrid_RightClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="名称" Binding="{Binding DisplayNameOrName}" Width="200"/>
+                        <DataGridTextColumn Header="登录名" Binding="{Binding SamAccountName}" Width="140"/>
+                        <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="80"/>
+                        <DataGridTextColumn Header="部门/说明" Binding="{Binding Department}" Width="140"/>
+                        <DataGridTextColumn Header="职位" Binding="{Binding Title}" Width="120"/>
+                        <DataGridTextColumn Header="最后登录(近似)" Binding="{Binding LastLogonApprox, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
+                        <DataGridTextColumn Header="最后设置密码" Binding="{Binding PasswordLastSet, StringFormat=yyyy-MM-dd HH:mm}" Width="130"/>
+                        <DataGridTextColumn Header="描述" Binding="{Binding Description}" Width="200"/>
+                        <DataGridTextColumn Header="Distinguished Name" Binding="{Binding DistinguishedName}" Width="360"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <GridSplitter Grid.Row="1" Height="4" HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center" Background="#FFD0D0D0"/>
+
+                <GroupBox Grid.Row="2" Header="属性 / 成员" Padding="4">
+                    <TabControl x:Name="DetailTabs">
+                        <TabItem Header="属性">
+                            <DataGrid x:Name="DetailGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="字段" Binding="{Binding Key}" Width="220"/>
+                                    <DataGridTextColumn Header="值" Binding="{Binding Value}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                        <TabItem Header="直接成员">
+                            <DataGrid x:Name="MemberGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="240"/>
+                                    <DataGridTextColumn Header="类型" Binding="{Binding StatusText}" Width="90"/>
+                                    <DataGridTextColumn Header="Distinguished Name" Binding="{Binding DistinguishedName}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                        <TabItem Header="所属组">
+                            <DataGrid x:Name="MemberOfGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="组名" Binding="{Binding Name}" Width="240"/>
+                                    <DataGridTextColumn Header="Distinguished Name" Binding="{Binding DistinguishedName}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
+                </GroupBox>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>
