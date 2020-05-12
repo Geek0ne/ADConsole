@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Controls;
 using ADConsole.Services;
 
 namespace ADConsole
@@ -12,6 +13,22 @@ namespace ADConsole
     /// </summary>
     public partial class App : Application
     {
+        /// <summary>
+        /// 菜单项悬停时立即展开子菜单（像 Windows 自带管理控制台那样）。
+        /// .NET Framework 4.8 的 WPF 菜单默认有约 400ms 悬停延迟且不可配置，
+        /// 这里在鼠标进入时直接把子菜单打开，绕过该延迟。
+        /// </summary>
+        private void MenuItem_InstantExpand(object sender, System.Windows.RoutedEventArgs e)
+        {
+            MenuItem mi = sender as MenuItem;
+            if (mi == null) return;
+            // 只处理有子菜单的项；正在禁用态或已展开时不重复操作
+            if (mi.Items.Count > 0 && mi.IsEnabled && !mi.IsSubmenuOpen)
+            {
+                mi.IsSubmenuOpen = true;
+            }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);

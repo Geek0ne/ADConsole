@@ -16,6 +16,8 @@
     <!-- 源码含中文，强制按 UTF-8 解析，避免依赖 BOM -->
     <CodePage>65001</CodePage>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <!-- exe 文件图标（桌面 / 资源管理器显示） -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
@@ -52,6 +54,11 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 程序图标：既作为 Resource 供 XAML 窗口引用，又由 ApplicationIcon 嵌入 exe -->
+    <Resource Include="app.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -106,6 +113,7 @@
     <Compile Include="Services\PermissionService.cs" />
     <Compile Include="Services\CsvHelper.cs" />
     <Compile Include="Dialogs\PickItemsDialog.cs" />
+    <Compile Include="Dialogs\UiHelper.cs" />
     <Compile Include="Dialogs\NewGroupDialog.cs" />
     <Compile Include="Dialogs\DomainInfoDialog.cs" />
     <Compile Include="Dialogs\NewUserDialog.xaml.cs">

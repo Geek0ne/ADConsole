@@ -1,5 +1,6 @@
 ﻿<Window x:Class="ADConsole.Dialogs.CsvImportDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Icon="/app.ico"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="批量导入用户 (CSV)"
         Height="620" Width="880"

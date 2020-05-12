@@ -1,5 +1,6 @@
 ﻿<Window x:Class="ADConsole.Dialogs.NewUserDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Icon="/app.ico"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="新建域用户"
         Height="520" Width="560"

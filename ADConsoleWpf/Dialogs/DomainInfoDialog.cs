@@ -21,7 +21,7 @@ namespace ADConsole.Dialogs
             Height = 600;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             ShowInTaskbar = false;
-
+            UiHelper.TrySetAppIcon(this);
             Grid root = new Grid { Margin = new Thickness(14) };
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });

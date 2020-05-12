@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="AD 域控管理控制台"
         Height="760" Width="1280"
+        Icon="/app.ico"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized">
 

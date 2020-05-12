@@ -32,6 +32,7 @@ namespace ADConsole.Dialogs
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             ResizeMode = ResizeMode.NoResize;
             ShowInTaskbar = false;
+            UiHelper.TrySetAppIcon(this);
 
             Grid root = new Grid { Margin = new Thickness(16) };
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
