@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using ADConsole.Services;
 using ADConsole.Dialogs;
 using Microsoft.Win32;
@@ -143,7 +144,25 @@ namespace ADConsole
         private TreeViewItem MakeNode(OuTreeNode node)
         {
             TreeViewItem item = new TreeViewItem();
-            item.Header = node.Title;
+
+            // 图标 + 文字（对齐 dsa.msc 的树样式）
+            StackPanel header = new StackPanel();
+            header.Orientation = Orientation.Horizontal;
+
+            Image img = new Image();
+            img.Source = GetKindIcon(node.Kind);
+            img.Width = 16;
+            img.Height = 16;
+            img.Margin = new Thickness(0, 0, 5, 0);
+            img.VerticalAlignment = VerticalAlignment.Center;
+            header.Children.Add(img);
+
+            TextBlock tb = new TextBlock();
+            tb.Text = node.Title;
+            tb.VerticalAlignment = VerticalAlignment.Center;
+            header.Children.Add(tb);
+
+            item.Header = header;
             item.Tag = node;
             item.ToolTip = node.Tip;
             item.IsExpanded = (node.Kind == AdKind.Domain);
@@ -153,6 +172,45 @@ namespace ADConsole
                 item.Items.Add(MakeNode(c));
             }
             return item;
+        }
+
+        /// <summary>按对象类别取树节点图标；资源缺失时返回 null（树仍可用，只是无图标）</summary>
+        private static ImageSource GetKindIcon(AdKind kind)
+        {
+            if (_kindIcons == null)
+            {
+                _kindIcons = new Dictionary<AdKind, ImageSource>();
+                _kindIcons[AdKind.Domain] = LoadIcon("domain");
+                _kindIcons[AdKind.OrganizationalUnit] = LoadIcon("ou");
+                _kindIcons[AdKind.Container] = LoadIcon("container");
+            }
+            ImageSource src;
+            if (_kindIcons.TryGetValue(kind, out src)) return src;
+            // 用户/组/计算机不在树上出现；兜底用容器图标
+            if (_kindIcons.TryGetValue(AdKind.Container, out src)) return src;
+            return null;
+        }
+
+        private static Dictionary<AdKind, ImageSource> _kindIcons;
+
+        /// <summary>从嵌入资源加载 ico；失败返回 null，不影响功能</summary>
+        private static ImageSource LoadIcon(string name)
+        {
+            try
+            {
+                Uri uri = new Uri("pack://application:,,,/icons/" + name + ".ico", UriKind.Absolute);
+                BitmapImage bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.UriSource = uri;
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                bmp.Freeze();
+                return bmp;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void TreeOu_Selected(object sender, RoutedPropertyChangedEventArgs<object> e)

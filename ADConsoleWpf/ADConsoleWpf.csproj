@@ -59,6 +59,10 @@
   <ItemGroup>
     <!-- 程序图标：既作为 Resource 供 XAML 窗口引用，又由 ApplicationIcon 嵌入 exe -->
     <Resource Include="app.ico" />
+    <!-- 树节点图标（域 / OU / 内置容器） -->
+    <Resource Include="icons\domain.ico" />
+    <Resource Include="icons\ou.ico" />
+    <Resource Include="icons\container.ico" />
   </ItemGroup>
 
   <ItemGroup>
