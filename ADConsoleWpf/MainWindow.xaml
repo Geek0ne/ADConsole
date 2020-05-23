@@ -83,7 +83,21 @@
             </StatusBarItem>
             <Separator/>
             <StatusBarItem>
-                <TextBlock x:Name="ConnText" Text=""/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="已连接 " VerticalAlignment="Center"/>
+                    <!-- 域名高亮徽标 -->
+                    <Border Background="#FFD6EAF8" Padding="5,1" CornerRadius="3" VerticalAlignment="Center"
+                            ToolTip="当前操作的域控制器">
+                        <TextBlock x:Name="ConnDomain" FontWeight="Bold" Foreground="#FF1A5276" Text=""/>
+                    </Border>
+                    <TextBlock Text="  |  账户 " VerticalAlignment="Center"/>
+                    <!-- 登录账户高亮徽标 -->
+                    <Border Background="#FFFDEBD0" Padding="5,1" CornerRadius="3" VerticalAlignment="Center"
+                            ToolTip="当前登录的域账户">
+                        <TextBlock x:Name="ConnAccount" FontWeight="Bold" Foreground="#FF9C640C" Text=""/>
+                    </Border>
+                    <TextBlock x:Name="ConnDetail" Text="" VerticalAlignment="Center"/>
+                </StackPanel>
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right" Margin="12,0,0,0">
                 <Border x:Name="PermBadge" Background="#FFE7E6E6" Padding="6,2" CornerRadius="3">

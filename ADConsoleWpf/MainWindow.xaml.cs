@@ -74,8 +74,9 @@ namespace ADConsole
             _vm.CanWrite = (_level != PermissionLevel.ReadOnly);
 
             Title = "AD 域控管理控制台 - " + _svc.DomainDns;
-            ConnText.Text = "已连接 " + _svc.PdcHost + "  |  账户 " + cred.UserName +
-                            "  |  " + _svc.RootDn;
+            ConnDomain.Text = _svc.PdcHost;
+            ConnAccount.Text = cred.UserName;
+            ConnDetail.Text = "  |  " + _svc.RootDn;
             UpdatePermBadge();
 
             BuildContextMenu();
@@ -516,8 +517,9 @@ namespace ADConsole
                 _vm.CanWrite = (_level != PermissionLevel.ReadOnly);
                 UpdatePermBadge();
 
-                ConnText.Text = "已连接 " + _svc.PdcHost + "  |  账户 " +
-                                login.ResultCredential.UserName + "  |  " + _svc.RootDn;
+                ConnDomain.Text = _svc.PdcHost;
+                ConnAccount.Text = login.ResultCredential.UserName;
+                ConnDetail.Text = "  |  " + _svc.RootDn;
                 BuildTree();
                 if (TreeOu.Items.Count > 0) ((TreeViewItem)TreeOu.Items[0]).IsSelected = true;
             }
