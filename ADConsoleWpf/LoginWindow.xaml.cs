@@ -1,9 +1,53 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using ADConsole.Services;
 
 namespace ADConsole
 {
+    /// <summary>标签等宽分布面板：每个子元素放一个字符，首字左贴边、末字右贴边、字距均分。
+    /// 用于“域服务器 / 用户名 / 密码”这类中文标签的两端对齐（WPF 的 Justify 对单行 CJK 不生效）。</summary>
+    public class JustifyPanel : System.Windows.Controls.Panel
+    {
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            double total = 0;
+            double height = 0;
+            foreach (UIElement child in InternalChildren)
+            {
+                child.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                total += child.DesiredSize.Width;
+                if (child.DesiredSize.Height > height) height = child.DesiredSize.Height;
+            }
+            double width = double.IsInfinity(availableSize.Width) ? total : availableSize.Width;
+            return new Size(width, height);
+        }
+
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            int n = InternalChildren.Count;
+            if (n == 0) return finalSize;
+
+            double total = 0;
+            for (int i = 0; i < n; i++) total += InternalChildren[i].DesiredSize.Width;
+
+            // 字距 = 剩余宽度平均分配到字符间隙；首字左贴边，末字右贴边
+            double gap = n > 1 ? (finalSize.Width - total) / (n - 1) : 0;
+            if (gap < 0) gap = 0;
+
+            double x = 0;
+            for (int i = 0; i < n; i++)
+            {
+                UIElement c = InternalChildren[i];
+                double ch = c.DesiredSize.Height;
+                c.Arrange(new Rect(x, (finalSize.Height - ch) / 2, c.DesiredSize.Width, ch));
+                x += c.DesiredSize.Width + gap;
+            }
+            return finalSize;
+        }
+    }
+
     /// <summary>登录框：支持记住密码与自动登录</summary>
     public partial class LoginWindow : Window
     {
@@ -83,6 +127,31 @@ namespace ADConsole
             if (AutoLoginBox == null) return;
             AutoLoginBox.IsEnabled = RememberBox.IsChecked == true;
             if (!AutoLoginBox.IsEnabled) AutoLoginBox.IsChecked = false;
+        }
+
+        // ---- 域输入框空值占位提示：没有内容时浅色显示“域服务器地址或IP” ----
+
+        private void DomainBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdateDomainHint();
+        }
+
+        private void DomainBox_GotFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            UpdateDomainHint();
+        }
+
+        private void DomainBox_LostFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            UpdateDomainHint();
+        }
+
+        private void UpdateDomainHint()
+        {
+            if (DomainHint == null || DomainBox == null) return;
+            DomainHint.Visibility = string.IsNullOrEmpty(DomainBox.Text)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         private async void LoginBtn_Click(object sender, RoutedEventArgs e)

@@ -1,15 +1,127 @@
 ﻿<Window x:Class="ADConsole.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ADConsole"
         Title="AD 域控管理控制台 — 登录"
-        Height="396" Width="390"
+        Height="404" Width="440"
         Icon="/app.ico"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         ShowInTaskbar="True">
 
+    <Window.Resources>
+        <!-- 主按钮（登录）：蓝色渐变 + 圆角，悬停/按下有明暗变化 -->
+        <Style x:Key="AccentButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Width" Value="104"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#FF4E8BEA" Offset="0"/>
+                        <GradientStop Color="#FF2D6CDF" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="4" BorderThickness="1"
+                                BorderBrush="#FF1A51B4"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#FF67A0F2" Offset="0"/>
+                                            <GradientStop Color="#FF3C7CE6" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="true">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#FF1E58C0" Offset="0"/>
+                                            <GradientStop Color="#FF2A64CC" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter TargetName="Bd" Property="Background" Value="#FFB6C2D4"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FF9FAFC4"/>
+                                <Setter Property="Foreground" Value="#FFEFEFEF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 次按钮（退出）：白灰渐变，悬停泛蓝 -->
+        <Style x:Key="PlainButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#FF3C3C3C"/>
+            <Setter Property="Width" Value="84"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#FFFFFFFF" Offset="0"/>
+                        <GradientStop Color="#FFE9E9E9" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="4" BorderThickness="1"
+                                BorderBrush="#FFC4C4C4"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#FFF6FAFF" Offset="0"/>
+                                            <GradientStop Color="#FFE1ECFA" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#FF8FB4E4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="true">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#FFD8E6F6" Offset="0"/>
+                                            <GradientStop Color="#FFE9F1FA" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter TargetName="Bd" Property="Background" Value="#FFF0F0F0"/>
+                                <Setter Property="Foreground" Value="#FFA0A0A0"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Border BorderBrush="#FFCCCCCC" BorderThickness="1" Background="White">
-        <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Margin="26" HorizontalAlignment="Center" VerticalAlignment="Center">
 
             <!-- 标题 -->
             <TextBlock Text="AD 域控管理控制台" FontSize="19" FontWeight="Bold"
@@ -17,11 +129,11 @@
             <TextBlock x:Name="Hint" Foreground="#FFC00000" FontSize="11"
                        HorizontalAlignment="Center" Margin="0,2,0,0" TextWrapping="Wrap"/>
 
-            <!-- 表单：左列标签右对齐，右列输入框（宽 190），整块水平居中 -->
+            <!-- 表单：左列标签定宽且两端对齐（三个标签等宽），右列输入框，整块居中 -->
             <Grid Margin="0,16,0,0" HorizontalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="190"/>
+                    <ColumnDefinition Width="210"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -32,23 +144,35 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- 域 -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="域 (DNS 名称)"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Margin="0,0,10,10"/>
-                <TextBox x:Name="DomainBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,10"/>
+                <!-- 域服务器：标签等宽两端对齐；输入框空时浅色提示 -->
+                <local:JustifyPanel Grid.Row="0" Grid.Column="0" Width="50" Height="22"
+                                    Margin="0,0,10,10" VerticalAlignment="Center">
+                    <TextBlock Text="域"/><TextBlock Text="服"/><TextBlock Text="务"/><TextBlock Text="器"/>
+                </local:JustifyPanel>
+                <Grid Grid.Row="0" Grid.Column="1" Margin="0,0,0,10">
+                    <TextBox x:Name="DomainBox"
+                             TextChanged="DomainBox_TextChanged"
+                             GotKeyboardFocus="DomainBox_GotFocus"
+                             LostKeyboardFocus="DomainBox_LostFocus"/>
+                    <!-- 空值占位提示（不响应鼠标，点击仍落在输入框上） -->
+                    <TextBlock x:Name="DomainHint" Text="域服务器地址或IP"
+                               Margin="8,0,0,0" VerticalAlignment="Center"
+                               Foreground="#FFB3B3B3" IsHitTestVisible="False"/>
+                </Grid>
 
-                <!-- 账号 -->
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="账户名"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Margin="0,0,10,10"/>
+                <!-- 用户名 -->
+                <local:JustifyPanel Grid.Row="1" Grid.Column="0" Width="50" Height="22"
+                                    Margin="0,0,10,10" VerticalAlignment="Center">
+                    <TextBlock Text="用"/><TextBlock Text="户"/><TextBlock Text="名"/>
+                </local:JustifyPanel>
                 <TextBox x:Name="UserBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,10"
                          ToolTip="只填用户名即可，不需要带域名前缀"/>
 
                 <!-- 密码 -->
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="密码"
-                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Margin="0,0,10,10"/>
+                <local:JustifyPanel Grid.Row="2" Grid.Column="0" Width="50" Height="22"
+                                    Margin="0,0,10,10" VerticalAlignment="Center">
+                    <TextBlock Text="密"/><TextBlock Text="码"/>
+                </local:JustifyPanel>
                 <PasswordBox x:Name="PwdBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,12"/>
 
                 <!-- 选项（与输入框左对齐） -->
@@ -61,14 +185,16 @@
 
                 <!-- 按钮（与输入框左对齐） -->
                 <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal">
-                    <Button x:Name="LoginBtn" Content="登 录" Width="96" Margin="0" IsDefault="True" Click="LoginBtn_Click"/>
-                    <Button x:Name="CancelBtn" Content="退出" Width="80" IsCancel="True" Margin="12,0,0,0"/>
+                    <Button x:Name="LoginBtn" Content="登 录" IsDefault="True"
+                            Style="{StaticResource AccentButton}" Click="LoginBtn_Click"/>
+                    <Button x:Name="CancelBtn" Content="退 出" IsCancel="True" Margin="14,0,0,0"
+                            Style="{StaticResource PlainButton}"/>
                 </StackPanel>
             </Grid>
 
             <!-- 提示行 -->
             <TextBlock Margin="0,16,0,0" FontSize="11" Foreground="#FF808080"
-                       TextWrapping="Wrap" TextAlignment="Center" Width="320"
+                       TextWrapping="Wrap" TextAlignment="Center" Width="340"
                        Text="凭据使用 Windows DPAPI 加密后保存在当前 Windows 账户下，其他账户或机器无法解密。所有写操作均需具备相应权限的域账户。"/>
         </StackPanel>
     </Border>
