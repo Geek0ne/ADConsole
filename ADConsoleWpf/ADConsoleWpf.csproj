@@ -82,6 +82,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Dialogs\EditUserDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Dialogs\ResetPasswordDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -122,6 +126,9 @@
     <Compile Include="Dialogs\DomainInfoDialog.cs" />
     <Compile Include="Dialogs\NewUserDialog.xaml.cs">
       <DependentUpon>NewUserDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\EditUserDialog.xaml.cs">
+      <DependentUpon>EditUserDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Dialogs\ResetPasswordDialog.xaml.cs">
       <DependentUpon>ResetPasswordDialog.xaml</DependentUpon>

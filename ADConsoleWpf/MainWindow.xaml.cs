@@ -865,6 +865,11 @@ namespace ADConsole
             _rowMenu = new ContextMenu();
 
             _rowMenu.Items.Add(MakeMenuItem("查看属性", ShowDetailsMenu));
+
+            MenuItem mEdit = MakeMenuItem("编辑属性…", Menu_EditUser);
+            mEdit.SetBinding(MenuItem.IsEnabledProperty, new System.Windows.Data.Binding("CanWrite"));
+            _rowMenu.Items.Add(mEdit);
+
             _rowMenu.Items.Add(new Separator());
 
             MenuItem mPwd = MakeMenuItem("重置密码…", Menu_ResetPassword);
@@ -911,6 +916,26 @@ namespace ADConsole
         {
             AdObject o = Selected;
             if (o != null) ShowDetails(o);
+        }
+
+        private void Menu_EditUser(object sender, RoutedEventArgs e)
+        {
+            AdObject o = Selected;
+            if (o == null || o.Kind != AdKind.User) { ShowSelectUser(); return; }
+
+            EditUserDialog dlg = new EditUserDialog(o);
+            dlg.Owner = this;
+            if (dlg.ShowDialog() != true) return;   // 用户点「保存」才执行写操作
+
+            if (RunWrite("编辑用户属性", delegate
+            {
+                _svc.UpdateUserAttributes(o.DistinguishedName, dlg.ResultDepartment, dlg.ResultTitle,
+                    dlg.ResultEmail, dlg.ResultPhone, dlg.ResultDescription);
+            }))
+            {
+                LoadObjects();
+                SetStatus("已更新 " + o.DisplayNameOrName + " 的属性");
+            }
         }
 
         private void ObjectGrid_RightClick(object sender, MouseButtonEventArgs e)

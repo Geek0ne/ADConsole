@@ -515,6 +515,39 @@ namespace ADConsole.Services
             return sb.ToString();
         }
 
+        /// <summary>更新用户属性（部门/职位/邮箱/电话/说明）。传入空字符串表示清除该属性。</summary>
+        public void UpdateUserAttributes(string dn, string department, string title,
+            string email, string phone, string description)
+        {
+            using (DirectoryEntry e = Bind(dn))
+            {
+                SetOrClear(e, "department", department);
+                SetOrClear(e, "title", title);
+                SetOrClear(e, "mail", email);
+                SetOrClear(e, "telephoneNumber", phone);
+                SetOrClear(e, "description", description);
+                e.CommitChanges();
+            }
+        }
+
+        /// <summary>属性有变化时才写入；清空时只对已有值的属性做删除，避免 noSuchAttribute 错误</summary>
+        private static void SetOrClear(DirectoryEntry e, string property, string value)
+        {
+            string current = null;
+            try { current = Convert.ToString(e.Properties[property].Value); }
+            catch { }
+
+            if (string.IsNullOrEmpty(value))
+            {
+                if (!string.IsNullOrEmpty(current)) e.Properties[property].Clear();
+                return;
+            }
+            if (!string.Equals(current, value, StringComparison.Ordinal))
+            {
+                e.Properties[property].Value = value;
+            }
+        }
+
         public void SetPassword(string dn, string password)
         {
             using (DirectoryEntry e = Bind(dn))
