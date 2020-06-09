@@ -63,6 +63,8 @@
     <Resource Include="icons\domain.ico" />
     <Resource Include="icons\ou.ico" />
     <Resource Include="icons\container.ico" />
+    <!-- 状态栏账户人头图标 -->
+    <Resource Include="icons\user.ico" />
   </ItemGroup>
 
   <ItemGroup>

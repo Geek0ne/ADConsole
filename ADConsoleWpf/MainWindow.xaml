@@ -91,10 +91,15 @@
                         <TextBlock x:Name="ConnDomain" FontWeight="Bold" Foreground="#FF1A5276" Text=""/>
                     </Border>
                     <TextBlock Text="  |  账户 " VerticalAlignment="Center"/>
-                    <!-- 登录账户高亮徽标 -->
+                    <!-- 登录账户高亮徽标（人头图标 + 账户名） -->
                     <Border Background="#FFFDEBD0" Padding="5,1" CornerRadius="3" VerticalAlignment="Center"
                             ToolTip="当前登录的域账户">
-                        <TextBlock x:Name="ConnAccount" FontWeight="Bold" Foreground="#FF9C640C" Text=""/>
+                        <StackPanel Orientation="Horizontal">
+                            <Image x:Name="AccountIcon" Width="14" Height="14" Margin="0,0,4,0"
+                                   VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ConnAccount" FontWeight="Bold" Foreground="#FF9C640C"
+                                       VerticalAlignment="Center" Text=""/>
+                        </StackPanel>
                     </Border>
                     <TextBlock x:Name="ConnDetail" Text="" VerticalAlignment="Center"/>
                 </StackPanel>

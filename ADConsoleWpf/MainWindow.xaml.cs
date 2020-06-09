@@ -58,6 +58,9 @@ namespace ADConsole
             InitializeComponent();
             DataContext = _vm;
 
+            // 状态栏账户徽标的人头图标（系统图标重着色；资源缺失时为 null，不影响功能）
+            AccountIcon.Source = LoadIcon("user");
+
             try
             {
                 _svc.Connect(cred);
