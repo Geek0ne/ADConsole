@@ -36,13 +36,34 @@ namespace ADConsole.Services
 
             try
             {
-                using (PrincipalContext ctx = new PrincipalContext(ContextType.Domain, domain))
+                // 直连用户填写的服务器（先解析成 IPv4）。
+                // 不用 PrincipalContext(ContextType.Domain, ...)：
+                // 它会触发 DC 自动发现，输入 PDC 主机名时可能卡 20 秒以上。
+                string host = AdService.ResolveLdapHost(domain);
+                using (DirectoryEntry entry = new DirectoryEntry(
+                    "LDAP://" + host + "/RootDSE", user, password, AuthenticationTypes.Secure))
                 {
-                    return ctx.ValidateCredentials(user, password, ContextOptions.Negotiate);
+                    entry.RefreshCache(new string[] { "defaultNamingContext" });
+                    return !string.IsNullOrEmpty(
+                        Convert.ToString(entry.Properties["defaultNamingContext"].Value));
                 }
             }
             catch
             {
+                // 纯 NetBIOS 域名（不含点、无法直接 DNS 解析）时，才退回 .NET 域发现
+                if (domain.IndexOf('.') < 0)
+                {
+                    try
+                    {
+                        using (PrincipalContext ctx = new PrincipalContext(ContextType.Domain, domain))
+                        {
+                            return ctx.ValidateCredentials(user, password, ContextOptions.Negotiate);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
                 return false;
             }
         }
@@ -50,9 +71,21 @@ namespace ADConsole.Services
         /// <summary>查询当前账户对指定 OU 的写权限</summary>
         public static PermissionLevel GetLevel(string domainDn, string userDn)
         {
+            return GetLevel(domainDn, GetTokenGroupSids(userDn), null, null, null);
+        }
+
+        /// <summary>查询写权限（tokenGroups 已取好时用这个重载，避免重复查询）</summary>
+        public static PermissionLevel GetLevel(string domainDn, HashSet<string> tokenSids)
+        {
+            return GetLevel(domainDn, tokenSids, null, null, null);
+        }
+
+        /// <summary>查询写权限（指定 DC 与登录凭据，避免自动发现 DC 和误用当前 Windows 账户）</summary>
+        public static PermissionLevel GetLevel(string domainDn, HashSet<string> tokenSids,
+            string server, string userName, string password)
+        {
             try
             {
-                HashSet<string> tokenSids = GetTokenGroupSids(userDn);
                 if (tokenSids == null || tokenSids.Count == 0)
                 {
                     return PermissionLevel.ReadOnly;
@@ -71,7 +104,7 @@ namespace ADConsole.Services
                 }
 
                 // 否则看域根上是否有委派写权限（最常用的委派入口）
-                if (HasWriteAce(domainDn, tokenSids))
+                if (HasWriteAce(domainDn, tokenSids, server, userName, password))
                 {
                     return PermissionLevel.Delegated;
                 }
@@ -87,10 +120,17 @@ namespace ADConsole.Services
         /// <summary>判断账户对某个 DN 是否具有写权限（用于动态门禁）</summary>
         public static bool HasWritePermission(string dn, HashSet<string> tokenSids)
         {
+            return HasWritePermission(dn, tokenSids, null, null, null);
+        }
+
+        /// <summary>判断账户对某个 DN 是否具有写权限（指定 DC 与登录凭据）</summary>
+        public static bool HasWritePermission(string dn, HashSet<string> tokenSids,
+            string server, string userName, string password)
+        {
             if (tokenSids == null) return false;
             try
             {
-                return HasWriteAce(dn, tokenSids);
+                return HasWriteAce(dn, tokenSids, server, userName, password);
             }
             catch
             {
@@ -104,10 +144,24 @@ namespace ADConsole.Services
         /// </summary>
         public static HashSet<string> GetTokenGroupSids(string userDn)
         {
+            return GetTokenGroupSids(userDn, null, null, null);
+        }
+
+        /// <summary>取 tokenGroups（指定 DC 与登录凭据）</summary>
+        public static HashSet<string> GetTokenGroupSids(string userDn,
+            string server, string userName, string password)
+        {
             HashSet<string> sids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
-                using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + userDn))
+                string path = string.IsNullOrEmpty(server)
+                    ? "LDAP://" + userDn
+                    : "LDAP://" + server + "/" + userDn;
+                DirectoryEntry entry = string.IsNullOrEmpty(userName)
+                    ? new DirectoryEntry(path)
+                    : new DirectoryEntry(path, userName, password, AuthenticationTypes.Secure);
+
+                using (entry)
                 {
                     // tokenGroups 是需要显式拉取的计算属性
                     entry.RefreshCache(new string[] { "tokenGroups" });
@@ -136,7 +190,18 @@ namespace ADConsole.Services
         /// <summary>读取指定对象的 DACL，看是否对账户所在组授予了写权限</summary>
         private static bool HasWriteAce(string dn, HashSet<string> tokenSids)
         {
-            using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + dn))
+            return HasWriteAce(dn, tokenSids, null, null, null);
+        }
+
+        private static bool HasWriteAce(string dn, HashSet<string> tokenSids,
+            string server, string userName, string password)
+        {
+            string path = string.IsNullOrEmpty(server) ? "LDAP://" + dn : "LDAP://" + server + "/" + dn;
+            DirectoryEntry entry = string.IsNullOrEmpty(userName)
+                ? new DirectoryEntry(path)
+                : new DirectoryEntry(path, userName, password, AuthenticationTypes.Secure);
+
+            using (entry)
             {
                 ActiveDirectorySecurity sec = entry.ObjectSecurity;
                 AuthorizationRuleCollection rules =

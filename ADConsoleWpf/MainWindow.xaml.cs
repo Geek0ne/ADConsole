@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -52,6 +53,8 @@ namespace ADConsole
         private AdKind _mode = AdKind.User;
         private List<AdObject> _currentList = new List<AdObject>();
         private ContextMenu _rowMenu;
+        private string _loginSam;
+        private int _loadSeq;
 
         public MainWindow(StoredCredential cred)
         {
@@ -72,34 +75,112 @@ namespace ADConsole
                 throw;
             }
 
-            _tokenSids = PermissionService.GetTokenGroupSids(GetUserDn(cred));
-            _level = PermissionService.GetLevel(_svc.RootDn, GetUserDn(cred));
-            _vm.CanWrite = (_level != PermissionLevel.ReadOnly);
+            _loginSam = SamFromCredential(cred);
 
             Title = "AD 域控管理控制台 - " + _svc.DomainDns;
             ConnDomain.Text = _svc.PdcHost;
             ConnAccount.Text = cred.UserName;
             ConnDetail.Text = "  |  " + _svc.RootDn;
-            UpdatePermBadge();
+
+            // 权限在窗口显示后再检测，先给出明确状态，避免看起来像“只读”
+            PermText.Text = "检测中…";
+            PermBadge.Background = new SolidColorBrush(Color.FromRgb(0xE2, 0xE3, 0xE5));
+            PermText.Foreground = new SolidColorBrush(Color.FromRgb(0x38, 0x3D, 0x41));
+            PermBadge.ToolTip = "正在检测当前账户的写权限…";
 
             BuildContextMenu();
-            BuildTree();
 
-            if (_treeRoot != null && TreeOu.Items.Count > 0)
-            {
-                TreeViewItem top = (TreeViewItem)TreeOu.Items[0];
-                top.IsSelected = true;
-            }
+            // 关键性能优化：不在构造函数里阻塞建树和查询，
+            // 等窗口显示出来后再在后台加载，登录后能立即看到主界面。
+            Loaded += MainWindow_Loaded;
         }
 
-        private string GetUserDn(StoredCredential cred)
+        private static string SamFromCredential(StoredCredential cred)
         {
-            string sam = cred.UserName;
+            string sam = cred == null ? null : cred.UserName;
+            if (string.IsNullOrEmpty(sam)) return null;
             int i = sam.IndexOf('\\');
             if (i >= 0) sam = sam.Substring(i + 1);
             i = sam.IndexOf('@');
             if (i >= 0) sam = sam.Substring(0, i);
-            return "CN=" + AdService.EscapeRdn(sam) + ",CN=Users," + _svc.RootDn;
+            return sam;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= MainWindow_Loaded;
+            InitializeDirectoryAsync();
+        }
+
+        /// <summary>窗口显示后在后台加载权限、OU 树和列表，避免阻塞登录</summary>
+        private async void InitializeDirectoryAsync()
+        {
+            SetStatus("正在初始化目录数据…");
+
+            string sam = _loginSam;
+            HashSet<string> sids = null;
+            PermissionLevel level = PermissionLevel.ReadOnly;
+            OuTreeNode tree = null;
+            Exception treeError = null;
+
+            try
+            {
+                await Task.Run(delegate
+                {
+                    try
+                    {
+                        string userDn = _svc.FindUserDn(sam);
+                        if (!string.IsNullOrEmpty(userDn))
+                        {
+                            sids = PermissionService.GetTokenGroupSids(userDn,
+                                _svc.LdapHost, _svc.AuthUser, _svc.AuthPassword);
+                            level = PermissionService.GetLevel(_svc.RootDn, sids,
+                                _svc.LdapHost, _svc.AuthUser, _svc.AuthPassword);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    try
+                    {
+                        tree = _svc.BuildOuTree();
+                    }
+                    catch (Exception ex)
+                    {
+                        treeError = ex;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                treeError = ex;
+            }
+
+            _tokenSids = sids ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _level = level;
+            _vm.CanWrite = (_level != PermissionLevel.ReadOnly);
+            UpdatePermBadge();
+
+            if (tree != null)
+            {
+                _treeRoot = tree;
+                TreeOu.Items.Clear();
+                TreeOu.Items.Add(MakeNode(tree));
+                if (TreeOu.Items.Count > 0)
+                {
+                    ((TreeViewItem)TreeOu.Items[0]).IsSelected = true;
+                }
+            }
+            else
+            {
+                SetStatus("OU 树加载失败");
+                if (treeError != null)
+                {
+                    MessageBox.Show(this, "加载 OU 树失败：\n\n" + AdError.Describe(treeError),
+                        "AD 控制台", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         private void UpdatePermBadge()
@@ -124,26 +205,6 @@ namespace ADConsole
         }
 
         // ---------------- 树 ----------------
-
-        private void BuildTree()
-        {
-            try
-            {
-                SetStatus("正在加载组织单位树…");
-                _treeRoot = _svc.BuildOuTree();
-                TreeOu.Items.Clear();
-
-                TreeViewItem top = MakeNode(_treeRoot);
-                TreeOu.Items.Add(top);
-                SetStatus("就绪");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, "加载 OU 树失败：\n\n" + AdError.Describe(ex),
-                    "AD 控制台", MessageBoxButton.OK, MessageBoxImage.Error);
-                SetStatus("OU 树加载失败");
-            }
-        }
 
         private TreeViewItem MakeNode(OuTreeNode node)
         {
@@ -230,37 +291,54 @@ namespace ADConsole
 
         // ---------------- 列表 ----------------
 
-        private void LoadObjects()
+        private async void LoadObjects()
         {
             if (_currentNode == null) return;
 
+            OuTreeNode node = _currentNode;
+            AdKind mode = _mode;
+            string kw = SearchBox.Text == null ? string.Empty : SearchBox.Text.Trim();
+            bool recursive = RecursiveBox.IsChecked == true;
+            int seq = ++_loadSeq;
+
+            SetStatus("正在查询 " + node.Title + " …");
+            Mouse.OverrideCursor = Cursors.Wait;
+
+            List<AdObject> list = null;
+            Exception error = null;
             try
             {
-                SetStatus("正在查询 " + _currentNode.Title + " …");
-                Mouse.OverrideCursor = Cursors.Wait;
-
-                string kw = SearchBox.Text == null ? string.Empty : SearchBox.Text.Trim();
-                bool recursive = RecursiveBox.IsChecked == true;
-
-                _currentList = _svc.SearchObjects(_mode, _currentNode.DistinguishedName, kw, recursive);
-                ObjectGrid.ItemsSource = _currentList;
-
-                DetailGrid.ItemsSource = null;
-                MemberGrid.ItemsSource = null;
-                MemberOfGrid.ItemsSource = null;
-
-                SetStatus("共 " + _currentList.Count + " 个对象");
+                list = await Task.Run(delegate
+                {
+                    return _svc.SearchObjects(mode, node.DistinguishedName, kw, recursive);
+                });
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "查询失败：\n\n" + AdError.Describe(ex),
+                error = ex;
+            }
+
+            // 期间用户又切换了节点/搜索条件，丢弃过期结果
+            if (seq != _loadSeq) return;
+
+            Mouse.OverrideCursor = null;
+
+            if (error != null)
+            {
+                MessageBox.Show(this, "查询失败：\n\n" + AdError.Describe(error),
                     "AD 控制台", MessageBoxButton.OK, MessageBoxImage.Error);
                 SetStatus("查询失败");
+                return;
             }
-            finally
-            {
-                Mouse.OverrideCursor = null;
-            }
+
+            _currentList = list;
+            ObjectGrid.ItemsSource = list;
+
+            DetailGrid.ItemsSource = null;
+            MemberGrid.ItemsSource = null;
+            MemberOfGrid.ItemsSource = null;
+
+            SetStatus("共 " + list.Count + " 个对象");
         }
 
         private void SetMode(AdKind kind)
@@ -515,16 +593,16 @@ namespace ADConsole
             try
             {
                 _svc.Connect(login.ResultCredential);
-                _tokenSids = PermissionService.GetTokenGroupSids(GetUserDn(login.ResultCredential));
-                _level = PermissionService.GetLevel(_svc.RootDn, GetUserDn(login.ResultCredential));
-                _vm.CanWrite = (_level != PermissionLevel.ReadOnly);
-                UpdatePermBadge();
+                _loginSam = SamFromCredential(login.ResultCredential);
 
+                PermText.Text = "检测中…";
+                PermBadge.ToolTip = "正在检测当前账户的写权限…";
                 ConnDomain.Text = _svc.PdcHost;
                 ConnAccount.Text = login.ResultCredential.UserName;
                 ConnDetail.Text = "  |  " + _svc.RootDn;
-                BuildTree();
-                if (TreeOu.Items.Count > 0) ((TreeViewItem)TreeOu.Items[0]).IsSelected = true;
+
+                // 权限、目录树和列表在后台重新加载，不阻塞界面
+                InitializeDirectoryAsync();
             }
             catch (Exception ex)
             {

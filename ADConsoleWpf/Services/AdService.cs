@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.DirectoryServices;
 using System.DirectoryServices.ActiveDirectory;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text;
@@ -18,32 +20,31 @@ namespace ADConsole.Services
     public class AdService
     {
         private string _domainDns;      // example.com
-        private string _authUser;       // EXAMPLE\user1
+        private string _authUser;       // user1（或 DOMAIN\user / UPN）
         private string _password;
         private string _rootDn;         // DC=example,DC=com
         private string _forestDn;       // CN=Configuration,DC=example,DC=com
-        private string _pdcHost;        // AD.example.com
+        private string _pdcHost;        // AD.example.com（显示用）
+        private string _ldapHost;       // 192.0.2.10（实际连接用，避免主机名解析卡顿）
 
         public string DomainDns { get { return _domainDns; } }
         public string RootDn { get { return _rootDn; } }
         public string ForestDn { get { return _forestDn; } }
         public string PdcHost { get { return _pdcHost; } }
+        public string LdapHost { get { return _ldapHost; } }
         public string AuthUser { get { return _authUser; } }
+        public string AuthPassword { get { return _password; } }
 
         public void Connect(StoredCredential cred)
         {
             _domainDns = cred.Domain;
             _password = cred.Password;
+            _authUser = cred.UserName;
 
-            if (cred.UserName.Contains("\\"))
-            {
-                _authUser = cred.UserName;
-            }
-            else
-            {
-                string netbios = GetNetBiosName(cred.Domain);
-                _authUser = netbios + "\\" + cred.UserName;
-            }
+            // 先把域名/IP 解析成 IPv4 再连接：
+            // Windows LDAP 客户端解析主机名在本环境中会固定卡 22 秒（IPv4 直连则毫秒级），
+            // 且原实现遍历 CN=Partitions 取 NetBIOS 名还会额外拖慢首次查询。
+            _ldapHost = ResolveLdapHost(cred.Domain);
 
             using (DirectoryEntry rootDse = BindDns("RootDSE"))
             {
@@ -65,10 +66,35 @@ namespace ADConsole.Services
 
         private string BuildPath(string dn)
         {
-            if (string.IsNullOrEmpty(dn)) return "LDAP://" + _domainDns;
+            // 统一走已验证的 DC（已解析为 IPv4），避免每次都触发 DC 自动发现/主机名解析。
+            string host = string.IsNullOrEmpty(_ldapHost) ? _domainDns : _ldapHost;
+            if (string.IsNullOrEmpty(dn)) return "LDAP://" + host;
             if (dn.Equals("RootDSE", StringComparison.OrdinalIgnoreCase))
-                return "LDAP://" + _domainDns + "/RootDSE";
-            return "LDAP://" + dn;
+                return "LDAP://" + host + "/RootDSE";
+            return "LDAP://" + host + "/" + dn;
+        }
+
+        /// <summary>把主机名解析成 IPv4；已经是 IP 或解析失败时原样返回</summary>
+        public static string ResolveLdapHost(string host)
+        {
+            if (string.IsNullOrEmpty(host)) return host;
+
+            IPAddress parsed;
+            if (IPAddress.TryParse(host, out parsed)) return host;
+
+            try
+            {
+                IPAddress[] addrs = Dns.GetHostAddresses(host);
+                foreach (IPAddress a in addrs)
+                {
+                    if (a.AddressFamily == AddressFamily.InterNetwork) return a.ToString();
+                }
+                if (addrs.Length > 0) return addrs[0].ToString();
+            }
+            catch
+            {
+            }
+            return host;
         }
 
         private DirectoryEntry BindDns(string dn)
@@ -79,38 +105,6 @@ namespace ADConsole.Services
         private DirectoryEntry Bind(string dn)
         {
             return new DirectoryEntry(BuildPath(dn), _authUser, _password, AuthenticationTypes.Secure);
-        }
-
-        private string GetNetBiosName(string domainDns)
-        {
-            try
-            {
-                using (DirectoryEntry rootDse = BindDns("RootDSE"))
-                {
-                    string configDn = Convert.ToString(rootDse.Properties["configurationNamingContext"].Value);
-                    using (DirectoryEntry part = new DirectoryEntry(
-                        "LDAP://" + _domainDns + "/CN=Partitions," + configDn,
-                        _authUser, _password, AuthenticationTypes.Secure))
-                    {
-                        foreach (DirectoryEntry c in part.Children)
-                        {
-                            string dns = Convert.ToString(c.Properties["dnsRoot"].Value);
-                            string nb = Convert.ToString(c.Properties["netBIOSName"].Value);
-                            string nc = Convert.ToString(c.Properties["nCName"].Value);
-                            if (!string.IsNullOrEmpty(nb) &&
-                                string.Equals(dns, domainDns, StringComparison.OrdinalIgnoreCase))
-                            {
-                                return nb;
-                            }
-                            c.Dispose();
-                        }
-                    }
-                }
-            }
-            catch
-            {
-            }
-            return domainDns;
         }
 
         // ---------------- 查询 ----------------
@@ -719,6 +713,33 @@ namespace ADConsole.Services
             return list;
         }
 
+        /// <summary>按登录名查找用户真实 DN（用户可能不在 CN=Users 容器里）</summary>
+        public string FindUserDn(string sam)
+        {
+            if (string.IsNullOrEmpty(sam)) return null;
+            try
+            {
+                using (DirectorySearcher s = CreateSearcher(_rootDn))
+                {
+                    s.Filter = "(&(objectCategory=person)(objectClass=user)(sAMAccountName=" +
+                        EscapeLdap(sam) + "))";
+                    s.SearchScope = SearchScope.Subtree;
+                    s.SizeLimit = 1;
+                    s.PropertiesToLoad.Clear();
+                    s.PropertiesToLoad.Add("distinguishedName");
+                    SearchResult r = s.FindOne();
+                    if (r != null && r.Properties["distinguishedName"].Count > 0)
+                    {
+                        return Convert.ToString(r.Properties["distinguishedName"][0]);
+                    }
+                }
+            }
+            catch
+            {
+            }
+            return null;
+        }
+
         /// <summary>按 DN 取单个对象（属性面板 / 成员解析用）</summary>
         public AdObject GetByDn(string dn)
         {
@@ -1197,8 +1218,9 @@ namespace ADConsole.Services
 
         private DateTime? ReadLastLogonOn(string dc, string userDn)
         {
+            string host = ResolveLdapHost(dc);
             using (DirectoryEntry e = new DirectoryEntry(
-                "LDAP://" + dc + "/" + userDn, _authUser, _password, AuthenticationTypes.Secure))
+                "LDAP://" + host + "/" + userDn, _authUser, _password, AuthenticationTypes.Secure))
             {
                 e.RefreshCache(new string[] { "lastLogon" });
                 object v = e.Properties["lastLogon"].Value;
