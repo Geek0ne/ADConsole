@@ -1,7 +1,35 @@
 # AD 域控管理控制台
 
-基于 **PowerShell + WinForms + RSAT ActiveDirectory 模块** 的轻量级 Active Directory 管理界面。
-单文件实现，无需编译、无需安装依赖（RSAT 已随系统就绪）。
+提供两个版本：
+
+- **WPF 正式版**（推荐）：`ADConsoleWpf\bin\Release\ADConsole.exe`，纯 LDAP/ADSI，不依赖 RSAT
+- **PowerShell 轻量版**：`ADConsole.ps1`，基于 WinForms + RSAT ActiveDirectory 模块
+
+## WPF 正式版
+
+| 项目 | 说明 |
+|---|---|
+| 源码 | `ADConsoleWpf\`（.NET Framework 4.8，旧式 csproj） |
+| 程序 | `ADConsoleWpf\bin\Release\ADConsole.exe`（x64） |
+| 构建 | 用 `Framework64\v4.0.30319\MSBuild.exe` 执行 `/t:Rebuild /p:Configuration=Release /p:Platform=x64`；改代码后请先删 `obj`、`bin` 再重建 |
+| 测试 | `test-adconsole-wpf.ps1`，**214 / 214 全部通过** |
+
+功能要点：
+
+- **登录框**：记住密码 / 自动登录；凭据用 Windows DPAPI（CurrentUser）加密存于
+  `%APPDATA%\ADConsole\credential.dat`，换账户或换机器无法解密
+- **权限徽标**：按 `tokenGroups` 的组 SID 判定「域管理员 / 委派管理员 / 只读」，
+  并按真实用户 DN 查询（用户不在 `CN=Users` 时同样正确）
+- **写操作门禁**：只读账户的修改/删除/重置密码等菜单自动禁用；所有写操作均由用户主动触发
+- **右键编辑属性**：可修改用户的部门 / 职位 / 邮箱 / 电话 / 说明
+- **性能**：登录时先把域服务器解析为 IPv4 并固定走同一台 DC，避免 LDAP 主机名解析和
+  DC 自动发现造成的 20 秒级卡顿；主窗口先显示，权限、OU 树、对象列表在后台加载
+  （实测：点击登录到主窗口约 0.5–0.7 秒，列表首行约 1.3–1.5 秒）
+
+## PowerShell 轻量版
+
+基于 **PowerShell + WinForms + RSAT ActiveDirectory 模块**，单文件实现，无需编译。
+以下为 PowerShell 版的说明。
 
 ## 文件
 
