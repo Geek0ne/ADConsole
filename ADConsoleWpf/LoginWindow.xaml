@@ -141,12 +141,11 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- 域服务器：标签等宽两端对齐；输入框空时浅色提示 -->
                 <local:JustifyPanel Grid.Row="0" Grid.Column="0" Width="50" Height="22"
-                                    Margin="0,0,10,10" VerticalAlignment="Center">
+                                    Margin="0,0,18,10" VerticalAlignment="Center">
                     <TextBlock Text="域"/><TextBlock Text="服"/><TextBlock Text="务"/><TextBlock Text="器"/>
                 </local:JustifyPanel>
                 <Grid Grid.Row="0" Grid.Column="1" Margin="0,0,0,10">
@@ -162,7 +161,7 @@
 
                 <!-- 用户名 -->
                 <local:JustifyPanel Grid.Row="1" Grid.Column="0" Width="50" Height="22"
-                                    Margin="0,0,10,10" VerticalAlignment="Center">
+                                    Margin="0,0,18,10" VerticalAlignment="Center">
                     <TextBlock Text="用"/><TextBlock Text="户"/><TextBlock Text="名"/>
                 </local:JustifyPanel>
                 <TextBox x:Name="UserBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,10"
@@ -170,7 +169,7 @@
 
                 <!-- 密码 -->
                 <local:JustifyPanel Grid.Row="2" Grid.Column="0" Width="50" Height="22"
-                                    Margin="0,0,10,10" VerticalAlignment="Center">
+                                    Margin="0,0,18,10" VerticalAlignment="Center">
                     <TextBlock Text="密"/><TextBlock Text="码"/>
                 </local:JustifyPanel>
                 <PasswordBox x:Name="PwdBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,12"/>
@@ -182,15 +181,15 @@
                 <CheckBox x:Name="AutoLoginBox" Grid.Row="4" Grid.Column="1"
                           Content="自动登录（下次启动直接进入）"
                           Margin="0,0,0,12" IsEnabled="False"/>
-
-                <!-- 按钮（与输入框左侧对齐，两枚等大） -->
-                <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0">
-                    <Button x:Name="LoginBtn" Content="登 录" IsDefault="True"
-                            Style="{StaticResource AccentButton}" Click="LoginBtn_Click"/>
-                    <Button x:Name="CancelBtn" Content="退 出" IsCancel="True" Margin="14,0,0,0"
-                            Style="{StaticResource PlainButton}"/>
-                </StackPanel>
             </Grid>
+
+            <!-- 按钮：两枚等大，间距加宽，整组相对窗口水平居中 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                <Button x:Name="LoginBtn" Content="登 录" IsDefault="True"
+                        Style="{StaticResource AccentButton}" Click="LoginBtn_Click"/>
+                <Button x:Name="CancelBtn" Content="退 出" IsCancel="True" Margin="24,0,0,0"
+                        Style="{StaticResource PlainButton}"/>
+            </StackPanel>
 
             <!-- 提示行 -->
             <TextBlock Margin="0,16,0,0" FontSize="11" Foreground="#FF808080"
