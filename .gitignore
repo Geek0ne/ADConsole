@@ -1,17 +1,19 @@
-# 构建产物
+# 构建输出
 [Bb]in/
 [Oo]bj/
 *.exe
 *.dll
 *.pdb
 
-# VS / MSBuild 缓存
+# Visual Studio / MSBuild
 .vs/
 *.user
 *.suo
 *.cache
 
-# 临时文件
+# 测试与临时文件
+TestResults/
+*.trx
 *.log
 Thumbs.db
 Desktop.ini

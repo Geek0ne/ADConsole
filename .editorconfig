@@ -1,0 +1,17 @@
+root = true
+
+[*]
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C# / XAML / PowerShell 源文件需要 UTF-8 BOM，否则中文在旧编译器中会乱码
+[*.{cs,xaml,ps1}]
+charset = utf-8-bom
+
+[*.{md,yml,yaml}]
+charset = utf-8
+end_of_line = lf
+
+[*.{ico,png}]
+insert_final_newline = false

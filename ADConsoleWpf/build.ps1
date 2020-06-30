@@ -1,4 +1,4 @@
-param([switch]$Rebuild)
+﻿param([switch]$Rebuild)
 # ============================================================
 #  ADConsole build helper (PowerShell)
 #  Ensures UTF-8 BOM on all sources, then builds with the
@@ -22,6 +22,16 @@ Get-ChildItem $root -Recurse -Include *.cs,*.xaml -File |
 
 $msb = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe"
 if (-not (Test-Path $msb)) { throw "MSBuild not found: $msb" }
+
+# Rebuild 时先清空输出，避免旧产物/增量缓存导致行为与源码不一致
+if ($Rebuild) {
+    foreach ($dir in @("$root\bin", "$root\obj")) {
+        if (Test-Path $dir) {
+            Write-Host "  Clean: $dir"
+            Remove-Item -Recurse -Force $dir
+        }
+    }
+}
 
 $target = if ($Rebuild) { 'Rebuild' } else { 'Build' }
 & $msb "$root\ADConsoleWpf.csproj" /t:$target /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo
